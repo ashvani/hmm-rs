@@ -49,5 +49,6 @@ fn main() {
     println!("alpha = {:?}", model.alpha);
     model.backward();
     println!("beta = {:?}", model.beta);
+    model.train();
 }
 

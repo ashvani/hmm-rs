@@ -38,8 +38,9 @@ impl Hmm {
     }
 
 
+
+
     pub fn loglikelihood(&self) -> f32 {
-        println!("c = {:?}", self.c);
         -1.0 * self.c.iter().map(|x| f32::log10(*x)).sum::<f32>()
     }
 
@@ -105,7 +106,79 @@ impl Hmm {
     }
 
 
-    fn train(&mut self) {
+    fn estimate(&mut self) {
+        // Try implementating this in one attempt
+        // xi and gamma
+        let mut xi: Vec<Vec<f32>> = vec![];
+        for i in 0..self.n {
+            let mut row: Vec<f32> = vec![];
+            for j in 0..self.n {
+                let mut val:f32 = 0.0;
+                for t in 0..self.t-1 {
+                    val += self.alpha[t][i] * self.a[i][j] * self.b[j][self.o[t+1]] * self.beta[t+1][j]
+                }
+                row.push(val);
+            }
+            xi.push(row);
+        }
+        println!("matrix xi = {:?}", &xi);
+
+        let mut gamma: Vec<Vec<f32>> = vec![];
+        for t in 0..self.t-1 {
+            let mut row: Vec<f32> = vec![];
+            for i in 0..self.n {
+                let mut val:f32 = 0.0;
+                for j in 0..self.n {
+                    val += self.alpha[t][i] * self.a[i][j] * self.b[j][self.o[t+1]] * self.beta[t+1][j];
+                }
+                row.push(val);
+            }
+            gamma.push(row);
+        }
+        gamma.push(self.alpha[self.t - 1].to_owned());
+        println!("matrix gamma = {:?}", &gamma);
+        self.pie = gamma[0].to_owned();
+
+        let mut gamma_t_1: Vec<f32> = vec![];
+        for i in 0..self.n {
+            let mut val: f32 = 0.0;
+            for j in 0..self.t-1 {
+                val += gamma[j][i];
+            }
+            gamma_t_1.push(val);
+        }
+
+               // re-estimate a[i][j]
+        for i in 0..self.n {
+            for j in 0..self.n {
+                self.a[i][j] = xi[i][j] / gamma_t_1[i];
+            }
+        }
+
+        println!("matrix b = {:?}", self.b);
+        // re-estimate b[j][k]
+        for i in 0..self.n {
+            let mut denom: f32 = 0.0;
+            for t in 0..self.t {
+                denom += gamma[t][i];
+            }
+
+            for j in 0..self.m {
+                let mut numer: f32 = 0.0;
+                for t in 0..self.t {
+                    if self.o[t] == j {
+                        numer += gamma[t][i];
+                    }
+                }
+                self.b[i][j] = numer / denom;
+            }
+        }
+
+        println!("matrix b = {:?}", self.b);
+    }
+
+    pub fn train(&mut self) {
+        self.estimate();
 
     }
 
