@@ -11,14 +11,12 @@
 /// model.initialize_a();
 /// model.initialize_b();
 /// model.initialize_pie();
-use derive_builder::Builder;
 
-#[derive(Builder)]
 pub struct Hmm {
     emission_prob: Vec<Vec<f32>>, // N by N 
     transition_prob: Vec<Vec<f32>>, // N by M 
     observations: Vec<usize>, // T 
-    pie: Vec<f32>, //N 
+    initial_prob: Vec<f32>, //N 
     alpha: Vec<Vec<f32>>, // T by N  
     beta: Vec<Vec<f32>>, // T by N  
     c: Vec<f32>, // T 
@@ -27,7 +25,50 @@ pub struct Hmm {
     m: usize 
 }
 
+
 impl Hmm {
+
+    pub fn new(n: usize, m: usize, observations: Vec<usize>) -> Self {
+        let t = observations.len();
+        Self {
+            emission_prob: vec![],
+            transition_prob: vec![],
+            observations,
+            initial_prob: vec![],
+            alpha: vec![],
+            beta: vec![],
+            c: vec![],
+            n,
+            t,
+            m
+        }
+    }
+
+
+//    pub fn gen_observations() {
+//        todo!() 
+//    }
+//
+    pub fn emission_prob(mut self, emission_prob: Vec<Vec<f32>>) -> Self {
+
+        self.emission_prob = emission_prob;
+        self
+
+    }
+
+    pub fn transition_prob(mut self, transition_prob: Vec<Vec<f32>>) -> Self {
+
+        self.transition_prob = transition_prob;
+        self
+    }
+
+   
+    pub fn initial_prob(mut self, initial_prob: Vec<f32>) -> Self {
+
+        self.initial_prob = initial_prob;
+        self 
+
+    }
 
 //    fn read_a() {
 //        // read transition probabilities from some file
@@ -49,7 +90,10 @@ impl Hmm {
 
 
     pub fn loglikelihood(&self) -> f32 {
-        -1.0 * self.c.iter().map(|x| f32::log10(*x)).sum::<f32>()
+        -1.0 * self.c
+            .iter()
+            .map(|x| f32::log10(*x))
+            .sum::<f32>()
     }
 
 
@@ -68,7 +112,7 @@ impl Hmm {
             for i in 0..self.n {
                 let mut val:f32 = 0.0;
                 for j in 0..self.n {
-                    val += self.transition_prob[i][j] * self.emission_prob[j][self.observations[t+1]] * self.beta[t + 1][j]
+                    val += self.transition_prob[i][j] * self.emission_prob[j][self.observations[t+1]] * self.beta[t + 1][j];
                 }
                 val *= self.c[t];
                 beta_row.push(val);
@@ -84,7 +128,7 @@ impl Hmm {
         let mut sum = 0.0;
         let mut alpha_row = vec![];
         for i in 0..self.n {
-            alpha_row.push(self.pie[i] * self.emission_prob[i][self.observations[0]]);
+            alpha_row.push(self.initial_prob[i] * self.emission_prob[i][self.observations[0]]);
             sum += alpha_row[i];
         }
 
@@ -123,7 +167,7 @@ impl Hmm {
             for j in 0..self.n {
                 let mut val:f32 = 0.0;
                 for t in 0..self.t-1 {
-                    val += self.alpha[t][i] * self.transition_prob[i][j] * self.emission_prob[j][self.observations[t+1]] * self.beta[t+1][j]
+                    val += self.alpha[t][i] * self.transition_prob[i][j] * self.emission_prob[j][self.observations[t+1]] * self.beta[t+1][j];
                 }
                 row.push(val);
             }
@@ -143,7 +187,7 @@ impl Hmm {
             gamma.push(row);
         }
         gamma.push(self.alpha[self.t - 1].to_owned());
-        self.pie = gamma[0].to_owned();
+        self.initial_prob = gamma[0].to_owned();
 
         let mut gamma_t_1: Vec<f32> = vec![];
         for i in 0..self.n {
@@ -193,5 +237,4 @@ impl Hmm {
     }
 
 }
-
 
